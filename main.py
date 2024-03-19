@@ -8,13 +8,27 @@ import fitz
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
 from langchain_community.vectorstores import faiss
-# from langchain_community.embeddings import HuggingFaceInstructEmbeddings,OpenAIEmbeddings
 from langchain_openai import OpenAIEmbeddings
 from langchain_openai import ChatOpenAI
-# from langchain_community.chat_models import openai
 from langchain.chains.conversational_retrieval.base import ConversationalRetrievalChain
 from langchain.memory import ConversationBufferMemory
-# from langchain_community.chains import ConversationRetrivalChain
+
+import psycopg2
+
+db_name = "aiplanet"
+db_user = "postgres"
+db_pswd = "1234"
+db_host = "localhost"
+db_port = "5432"
+
+conn = psycopg2.connect(
+    dbname = db_name,
+    user = db_user,
+    password = db_pswd,
+    host = db_host,
+    port= db_port
+)
+
 
 
 
@@ -68,6 +82,13 @@ def get_conversation_chain(vectorstore):
 
     return conversation_chain
 
+def store_raw_text(raw_text , filename):
+    cursor = conn.cursor()
+    insert_query = "INSERT INTO files (filename, file_content) VALUES (%s,%s);"
+    cursor.execute(insert_query,(filename,raw_text))
+    conn.commit()
+    conn.close()
+
 @app.post("/process_text")
 async def process_text(request: Request):
     raw_body = await request.body()
@@ -104,8 +125,11 @@ async def upload_pdf(file: UploadFile = File(...)):
             # get raw text
             raw_text=get_pdf_text(file.filename , file)
 
+            #store raw text in db for record
+            store_raw_text(raw_text, file.filename)
+
             #get text chunks
-            text_chunks=get_text_chunks(raw_text)
+            text_chunks=get_text_chunks(raw_text )
 
             # get vectorstore
             vectorstore=get_vectorstore(text_chunks)
