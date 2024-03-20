@@ -87,7 +87,7 @@ def store_raw_text(raw_text , filename):
     insert_query = "INSERT INTO files (filename, file_content) VALUES (%s,%s);"
     cursor.execute(insert_query,(filename,raw_text))
     conn.commit()
-    conn.close()
+    
 
 @app.post("/process_text")
 async def process_text(request: Request):
