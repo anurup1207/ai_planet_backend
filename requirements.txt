@@ -1,5 +1,5 @@
 fastapi==0.110.0
-PyMuPDFb==1.23.22
+PyMuPDF==1.23.22
 langchain==0.1.13
 langchain_community==0.0.29
 langchain_openai==0.0.8
