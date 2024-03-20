@@ -15,18 +15,15 @@ from langchain.memory import ConversationBufferMemory
 
 import psycopg2
 
-db_name = "aiplanet"
-db_user = "postgres"
-db_pswd = "1234"
-db_host = "localhost"
-db_port = "5432"
+load_dotenv()
+
 
 conn = psycopg2.connect(
-    dbname = db_name,
-    user = db_user,
-    password = db_pswd,
-    host = db_host,
-    port= db_port
+    dbname = os.environ['DB_NAME'],
+    user = os.environ['DB_USER'],
+    password = os.environ['DB_PSWD'],
+    host = os.environ['DB_HOST'],
+    port= os.environ['DB_PORT']
 )
 
 
