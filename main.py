@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 import os
 import shutil
+from io import BytesIO
 import fitz 
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
@@ -39,15 +40,19 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-def get_pdf_text(filename ,file):
-    doc = fitz.open(file.filename)
-    text = ""
-    for page in doc:
-        text += page.get_text()
-    doc.close()
-    text = '\n'.join(line for line in text.splitlines() if line.strip())
-
-    return text
+def get_pdf_text(contents):
+    # Process the PDF file using PyMuPDF
+    pdf_document = fitz.open(stream=BytesIO(contents), filetype="pdf")
+    # Initialize an empty string to store the extracted text
+    extracted_text = ""
+    
+    # Iterate over each page and extract text
+    for page_number in range(pdf_document.page_count):
+        page = pdf_document.load_page(page_number)
+        extracted_text += page.get_text()
+    extracted_text = '\n'.join(line for line in extracted_text.splitlines() if line.strip())
+    return extracted_text
+   
 
 def get_text_chunks(raw_text):
     text_splitter=CharacterTextSplitter(
@@ -115,23 +120,25 @@ async def chat(request: Request):
 @app.post("/upload")
 async def upload_pdf(file: UploadFile = File(...)):
     try:
-        with open(file.filename, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-            app.conversation=None
-            load_dotenv()
-            # get raw text
-            raw_text=get_pdf_text(file.filename , file)
+        
+        contents = await file.read()
+        
+        app.conversation=None
+        load_dotenv()
+        # get raw text
+        raw_text=get_pdf_text(contents)
+        
 
-            #store raw text in db for record
-            store_raw_text(raw_text, file.filename)
+        #store raw text in db for record
+        store_raw_text(raw_text, file.filename)
 
-            #get text chunks
-            text_chunks=get_text_chunks(raw_text )
+        #get text chunks
+        text_chunks=get_text_chunks(raw_text )
 
-            # get vectorstore
-            vectorstore=get_vectorstore(text_chunks)
-            
-            app.conversation = get_conversation_chain(vectorstore)
+        # get vectorstore
+        vectorstore=get_vectorstore(text_chunks)
+        
+        app.conversation = get_conversation_chain(vectorstore)
 
         return JSONResponse(content={"message":"Success"}, status_code=200)
     except Exception as e:
